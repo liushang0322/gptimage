@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  avatar        String?
+  credits       Int       @default(20)
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  images        Image[]
+  orders        Order[]
+  creditLogs    CreditLog[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Image {
+  id            String    @id @default(cuid())
+  userId        String
+  prompt        String
+  negativePrompt String?
+  mode          ImageMode @default(TEXT_TO_IMAGE)
+  size          String    @default("1024x1024")
+  quality       Quality   @default(STANDARD)
+  count         Int       @default(1)
+  creditCost    Int
+  status        ImageStatus @default(PENDING)
+  imageUrls     String[]
+  referenceUrl  String?
+  createdAt     DateTime  @default(now())
+  
+  user          User      @relation(fields: [userId], references: [id])
+}
+
+enum ImageMode {
+  TEXT_TO_IMAGE
+  IMAGE_TO_IMAGE
+}
+
+enum Quality {
+  STANDARD
+  HD
+}
+
+enum ImageStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  amount        Float
+  credits       Int
+  status        OrderStatus @default(PENDING)
+  paymentMethod String      @default("alipay")
+  transactionId String?
+  packageName   String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  confirmedAt   DateTime?
+  confirmedBy   String?
+  
+  user          User        @relation(fields: [userId], references: [id])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  EXPIRED
+}
+
+model CreditLog {
+  id            String        @id @default(cuid())
+  userId        String
+  amount        Int
+  type          CreditType
+  description   String
+  relatedId     String?
+  createdAt     DateTime      @default(now())
+  
+  user          User          @relation(fields: [userId], references: [id])
+}
+
+enum CreditType {
+  RECHARGE
+  CONSUME
+  GIFT
+  REFUND
+  ADMIN_ADJUST
+}
+
+model SystemConfig {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  value         String
+  description   String?
+  updatedAt     DateTime  @updatedAt
+}
