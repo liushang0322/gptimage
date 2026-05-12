@@ -35,7 +35,15 @@ jobs:
       - name: Build Next.js
         env:
           NEXTAUTH_SECRET: placeholder
-        run: npm run build
+        run: npm run build 2>&1 | tee build.log || true
+
+      - name: Show build log on failure
+        if: failure()
+        run: cat build.log
+
+      - name: Check build result
+        if: failure()
+        run: exit 1
 
       - name: Build Docker image
         run: |
