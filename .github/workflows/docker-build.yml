@@ -38,9 +38,9 @@ jobs:
           NODE_ENV: production
         run: |
           npx next build
-          echo "=== Verifying standalone output ==="
-          ls .next/standalone/
-          ls .next/standalone/server.js
+          echo "=== Standalone output ==="
+          find .next/standalone -maxdepth 2 -name server.js
+          echo "=== Static output ==="
           ls .next/static/
 
       - name: Log in to GitHub Container Registry
@@ -52,6 +52,12 @@ jobs:
 
       - name: Build and push Docker image
         run: |
+          # Normalize Next.js 16 standalone output (nested under project-name folder)
+          PKG_NAME=$(node -e "console.log(require('./package.json').name)")
+          mv ".next/standalone/$PKG_NAME" .next/standalone-tmp
+          rm -rf .next/standalone
+          mv .next/standalone-tmp .next/standalone
+
           cat > Dockerfile.ci << 'DOCKEREOF'
           FROM node:20-slim AS runner
           WORKDIR /app
