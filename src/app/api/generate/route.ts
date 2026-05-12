@@ -6,9 +6,15 @@ import OpenAI from "openai"
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return _openai
+}
 
 // 积分消耗规则
 function calculateCreditCost(size: string, quality: string, count: number): number {
@@ -93,7 +99,7 @@ export async function POST(request: NextRequest) {
           const imageBuffer = Buffer.from(referenceImage.split(",")[1] || referenceImage, "base64")
           const imageFile = new File([imageBuffer], "reference.png", { type: "image/png" })
           
-          response = await openai.images.edit({
+          response = await getOpenAI().images.edit({
             model: "gpt-image-1",
             image: imageFile,
             prompt: prompt,
@@ -102,7 +108,7 @@ export async function POST(request: NextRequest) {
           })
         } else {
           // 文生图
-          response = await openai.images.generate({
+          response = await getOpenAI().images.generate({
             model: "gpt-image-1",
             prompt: prompt,
             size: size as any,
