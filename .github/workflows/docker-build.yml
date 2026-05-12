@@ -57,6 +57,11 @@ jobs:
 
       - name: Build and push Docker image
         run: |
+          echo "=== Files before docker build ==="
+          ls -la .next/standalone/server.js
+          ls -la .next/standalone/package.json
+          ls -la .next/static/
+          
           cat > Dockerfile.prod << 'EOF'
           FROM node:20-slim
           WORKDIR /app
@@ -67,10 +72,10 @@ jobs:
           
           COPY public ./public
           COPY prisma ./prisma
-          COPY --chown=nextjs:nodejs .next/standalone ./
-          COPY --chown=nextjs:nodejs .next/static ./.next/static
+          COPY .next/standalone ./
+          COPY .next/static ./.next/static
           
-          RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads
+          RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app
           
           USER nextjs
           EXPOSE 3000
@@ -80,5 +85,9 @@ jobs:
           CMD ["node", "server.js"]
           EOF
 
-          docker build -f Dockerfile.prod -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
+          docker build -f Dockerfile.prod -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest . 2>&1 || {
+            echo "BUILD FAILED, running with --progress=plain:"
+            docker build --progress=plain -f Dockerfile.prod -t test . 2>&1
+            exit 1
+          }
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
