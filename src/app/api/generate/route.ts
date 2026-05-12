@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma"
 import OpenAI from "openai"
 import { writeFile, mkdir } from "fs/promises"
 import path from "path"
+import { buildUploadProxyUrl } from "@/lib/upload-urls"
 
 let _openai: OpenAI | null = null
 const openAIBaseURL = process.env.OPENAI_BASE_URL?.trim() || undefined
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
 
       return Response.json({
         success: true,
-        images: imageUrls,
+        images: imageUrls.map(buildUploadProxyUrl),
         creditCost,
         remainingCredits: user.credits - creditCost,
       })

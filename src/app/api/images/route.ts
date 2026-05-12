@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { NextRequest } from "next/server"
+import { buildUploadProxyUrl } from "@/lib/upload-urls"
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -28,8 +29,13 @@ export async function GET(request: NextRequest) {
     })
   ])
 
+  const transformedImages = images.map((image) => ({
+    ...image,
+    imageUrls: image.imageUrls.map(buildUploadProxyUrl),
+  }))
+
   return Response.json({
-    images,
+    images: transformedImages,
     pagination: {
       page,
       limit,
