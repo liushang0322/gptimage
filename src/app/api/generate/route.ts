@@ -7,10 +7,14 @@ import { writeFile, mkdir } from "fs/promises"
 import path from "path"
 
 let _openai: OpenAI | null = null
+const openAIBaseURL = process.env.OPENAI_BASE_URL?.trim() || undefined
+const openAIImageModel = process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1"
+
 function getOpenAI(): OpenAI {
   if (!_openai) {
     _openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      baseURL: openAIBaseURL,
     })
   }
   return _openai
@@ -100,7 +104,7 @@ export async function POST(request: NextRequest) {
           const imageFile = new File([imageBuffer], "reference.png", { type: "image/png" })
           
           response = await getOpenAI().images.edit({
-            model: "gpt-image-1",
+            model: openAIImageModel,
             image: imageFile,
             prompt: prompt,
             size: size as any,
@@ -109,7 +113,7 @@ export async function POST(request: NextRequest) {
         } else {
           // 文生图
           response = await getOpenAI().images.generate({
-            model: "gpt-image-1",
+            model: openAIImageModel,
             prompt: prompt,
             size: size as any,
             quality: quality === "HD" ? "high" : "low",
@@ -191,7 +195,12 @@ export async function POST(request: NextRequest) {
 
       console.error("OpenAI API error:", apiError)
       return Response.json(
-        { error: "图片生成失败: " + (apiError.message || "API调用出错") },
+        {
+          error:
+            "图片生成失败: " +
+            (apiError.message || "API调用出错") +
+            (openAIBaseURL ? ` (当前代理: ${openAIBaseURL})` : ""),
+        },
         { status: 500 }
       )
     }

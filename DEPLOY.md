@@ -42,9 +42,24 @@ cp .env.example .env
 POSTGRES_PASSWORD=换成你自己的数据库密码
 NEXTAUTH_SECRET=用 openssl rand -base64 32 生成
 OPENAI_API_KEY=sk-你的 OpenAI Key
+OPENAI_BASE_URL=
+OPENAI_IMAGE_MODEL=gpt-image-1
 NEXTAUTH_URL=https://image.lshang.top
 NEXT_PUBLIC_APP_URL=https://image.lshang.top
 ```
+
+如果你不是直连 OpenAI 官方，而是走 `sub2api`、New API 或其他 OpenAI 兼容网关，必须额外填写：
+
+```env
+OPENAI_BASE_URL=https://你的代理地址/v1
+OPENAI_IMAGE_MODEL=gpt-image-1
+```
+
+说明：
+
+- `OPENAI_BASE_URL` 必须是兼容 OpenAI API 的根地址，通常要带 `/v1`
+- `OPENAI_API_KEY` 填你代理平台给你的 key，不一定是 OpenAI 官方 key
+- 如果你的代理要求别的图像模型名，再改 `OPENAI_IMAGE_MODEL`
 
 ### 2.3 配置 Caddy
 

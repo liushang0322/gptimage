@@ -32,6 +32,8 @@ services:
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-change-this-to-a-random-string}"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-https://image.lshang.top}"
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
+      OPENAI_IMAGE_MODEL: "${OPENAI_IMAGE_MODEL:-gpt-image-1}"
       NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-https://image.lshang.top}"
     volumes:
       - uploads_data:/app/public/uploads
