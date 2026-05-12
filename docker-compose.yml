@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  web:
+    external: true
+
 services:
   db:
     image: postgres:16-alpine
@@ -11,8 +15,6 @@ services:
       POSTGRES_PASSWORD: gptimage123
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gptimage"]
       interval: 5s
@@ -23,8 +25,9 @@ services:
     build: .
     container_name: gptimage-app
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:5678:3000"
+    networks:
+      - default
+      - web
     environment:
       DATABASE_URL: "postgresql://gptimage:gptimage123@db:5432/gptimage"
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-change-this-to-a-random-string}"
@@ -37,7 +40,7 @@ services:
       db:
         condition: service_healthy
 
-  # 初始化数据库（首次运行后可移除）
+  # 初始化数据库（首次运行）
   migrate:
     build: .
     container_name: gptimage-migrate
