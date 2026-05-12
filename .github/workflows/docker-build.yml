@@ -37,14 +37,12 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
         run: npx next build
 
-      - name: Show .next output structure
+      - name: Show standalone structure
         run: |
-          echo "=== .next top-level ==="
-          ls -la .next/
-          echo "=== .next/standalone (if exists) ==="
-          ls -la .next/standalone/ 2>/dev/null || echo "standalone dir not found!"
-          echo "=== server.js location ==="
-          find .next -name "server.js" 2>/dev/null || echo "no server.js found"
+          echo "=== .next/standalone full tree (2 levels) ==="
+          find .next/standalone -maxdepth 3 | head -40
+          echo "=== server.js locations ==="
+          find .next/standalone -name "server.js"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -55,25 +53,28 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Find server.js - handle both flat and nested standalone layouts
-          SERVER_JS=$(find .next/standalone -name "server.js" | head -1)
-          STANDALONE_DIR=$(dirname "$SERVER_JS")
-          echo "Found server.js at: $SERVER_JS"
-          echo "Standalone dir: $STANDALONE_DIR"
+          # Next.js 16 standalone is nested: .next/standalone/<pkgname>/
+          # We need to copy the ENTIRE .next/standalone as-is and find server.js
+          SERVER_PATH=$(find .next/standalone -name "server.js" | head -1)
+          APP_DIR=$(dirname "$SERVER_PATH")
+          echo "server.js found at: $SERVER_PATH"
+          echo "App dir: $APP_DIR"
+
+          # Copy static files into the right place inside standalone
+          cp -r .next/static "$APP_DIR/.next/static"
+          cp -r public "$APP_DIR/public"
+          mkdir -p "$APP_DIR/public/uploads"
+          cp -r prisma "$APP_DIR/prisma"
 
           cat > Dockerfile.ci << DOCKEREOF
           FROM node:20-slim
           WORKDIR /app
           ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 
-          RUN groupadd --system --gid 1001 nodejs \\
-           && useradd --system --uid 1001 --gid nodejs nextjs \\
-           && mkdir -p /app/public/uploads
+          RUN groupadd --system --gid 1001 nodejs \
+           && useradd --system --uid 1001 --gid nodejs nextjs
 
-          COPY public ./public
-          COPY prisma ./prisma
-          COPY ${STANDALONE_DIR}/ ./
-          COPY .next/static ./.next/static
+          COPY ${APP_DIR}/ ./
           RUN chown -R nextjs:nodejs /app
 
           USER nextjs
@@ -81,6 +82,8 @@ jobs:
           CMD ["node", "server.js"]
           DOCKEREOF
 
+          echo "=== Dockerfile.ci ==="
           cat Dockerfile.ci
+
           docker build -f Dockerfile.ci -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
