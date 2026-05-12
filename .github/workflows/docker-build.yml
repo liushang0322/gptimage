@@ -53,18 +53,27 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Next.js 16 standalone is nested: .next/standalone/<pkgname>/
-          # We need to copy the ENTIRE .next/standalone as-is and find server.js
-          SERVER_PATH=$(find .next/standalone -name "server.js" | head -1)
-          APP_DIR=$(dirname "$SERVER_PATH")
-          echo "server.js found at: $SERVER_PATH"
+          # Next.js standalone output can be either:
+          # - .next/standalone/server.js
+          # - .next/standalone/<pkgname>/server.js
+          if [ -f .next/standalone/server.js ]; then
+            APP_DIR=".next/standalone"
+            SERVER_PATH=".next/standalone/server.js"
+          else
+            SERVER_PATH=$(find .next/standalone -mindepth 2 -maxdepth 2 -type f -name "server.js" | head -1)
+            APP_DIR=$(dirname "$SERVER_PATH")
+          fi
+          echo "server.js found at: ${SERVER_PATH:-<none>}"
           echo "App dir: $APP_DIR"
+          test -n "$APP_DIR"
+          test -f "$APP_DIR/server.js"
 
           # Copy static files into the right place inside standalone
-          cp -r .next/static "$APP_DIR/.next/static"
-          cp -r public "$APP_DIR/public"
           mkdir -p "$APP_DIR/public/uploads"
-          cp -r prisma "$APP_DIR/prisma"
+          mkdir -p "$APP_DIR/.next"
+          cp -r .next/static "$APP_DIR/.next/"
+          cp -r public "$APP_DIR/"
+          cp -r prisma "$APP_DIR/"
 
           cat > Dockerfile.ci << DOCKEREOF
           FROM node:20-slim

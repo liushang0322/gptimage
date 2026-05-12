@@ -25,14 +25,19 @@ RUN npm run build
 
 # Normalize Next.js 16 standalone output into a stable /tmp/standalone-app folder.
 RUN set -eux; \
-    APP_DIR="$(find .next/standalone -name server.js -exec dirname {} \; | head -n 1)"; \
+    if [ -f .next/standalone/server.js ]; then \
+      APP_DIR=".next/standalone"; \
+    else \
+      APP_DIR="$(find .next/standalone -mindepth 2 -maxdepth 2 -type f -name server.js -exec dirname {} \; | head -n 1)"; \
+    fi; \
     test -n "$APP_DIR"; \
+    test -f "$APP_DIR/server.js"; \
     mkdir -p /tmp/standalone-app; \
     cp -R "$APP_DIR"/. /tmp/standalone-app/; \
     mkdir -p /tmp/standalone-app/.next; \
-    cp -R .next/static /tmp/standalone-app/.next/static; \
-    cp -R public /tmp/standalone-app/public; \
-    cp -R prisma /tmp/standalone-app/prisma; \
+    cp -R .next/static /tmp/standalone-app/.next/; \
+    cp -R public /tmp/standalone-app/; \
+    cp -R prisma /tmp/standalone-app/; \
     mkdir -p /tmp/standalone-app/public/uploads
 
 # Production image
