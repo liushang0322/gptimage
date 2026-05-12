@@ -1,10 +1,7 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
 import { Navbar } from "@/components/layout/navbar"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "GPT Image - AI图片生成平台",
@@ -18,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" className="dark">
-      <body className={`${inter.className} bg-gray-900 text-white min-h-screen`}>
+      <body className="bg-gray-900 text-white min-h-screen">
         <Providers>
           <Navbar />
           <main className="pt-16">

@@ -8,13 +8,14 @@ services:
     container_name: gptimage-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: gptimage
-      POSTGRES_USER: gptimage
-      POSTGRES_PASSWORD: gptimage123
+      POSTGRES_DB: "${POSTGRES_DB:-gptimage}"
+      POSTGRES_USER: "${POSTGRES_USER:-gptimage}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-gptimage123}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./prisma/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gptimage"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,24 +28,13 @@ services:
       - default
       - web
     environment:
-      DATABASE_URL: "postgresql://gptimage:gptimage123@db:5432/gptimage"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-gptimage}:${POSTGRES_PASSWORD:-gptimage123}@db:5432/${POSTGRES_DB:-gptimage}"
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-change-this-to-a-random-string}"
-      NEXTAUTH_URL: "https://image.lshang.top"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-https://image.lshang.top}"
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
-      NEXT_PUBLIC_APP_URL: "https://image.lshang.top"
+      NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-https://image.lshang.top}"
     volumes:
       - uploads_data:/app/public/uploads
-    depends_on:
-      db:
-        condition: service_healthy
-
-  # 初始化数据库（首次运行）
-  migrate:
-    image: liushang0322/gptimage:latest
-    container_name: gptimage-migrate
-    environment:
-      DATABASE_URL: "postgresql://gptimage:gptimage123@db:5432/gptimage"
-    command: npx prisma migrate deploy
     depends_on:
       db:
         condition: service_healthy
