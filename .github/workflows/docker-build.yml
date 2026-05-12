@@ -20,7 +20,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Docker image (test only)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build Next.js
+        env:
+          NEXTAUTH_SECRET: placeholder
+        run: npm run build
+
+      - name: Build Docker image
         run: |
           docker build \
             --build-arg NEXTAUTH_SECRET=placeholder \
