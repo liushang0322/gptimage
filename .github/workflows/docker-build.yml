@@ -28,25 +28,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Debug file listing
-        run: |
-          echo "=== next.config.ts ==="
-          cat next.config.ts
-          echo "=== package.json scripts ==="
-          node -e "console.log(JSON.parse(require('fs').readFileSync('package.json','utf8')).scripts.build)"
-          echo "=== prisma schema ==="
-          wc -c prisma/schema.prisma
-          echo "=== next version ==="
-          npx next --version
-
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Build Next.js
+      - name: Build Next.js (standalone)
         env:
-          NEXTAUTH_SECRET: placeholder
+          NEXTAUTH_SECRET: placeholder-ci-secret
           NEXT_TELEMETRY_DISABLED: 1
-        run: npx next build 2>&1 | tee build.log || { cat build.log; exit 1; }
+          NODE_ENV: production
+        run: |
+          npx next build
+          echo "=== Verifying standalone output ==="
+          ls .next/standalone/
+          ls .next/standalone/server.js
+          ls .next/static/
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -57,37 +52,29 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          echo "=== Files before docker build ==="
-          ls -la .next/standalone/server.js
-          ls -la .next/standalone/package.json
-          ls -la .next/static/
-          
-          cat > Dockerfile.prod << 'EOF'
-          FROM node:20-slim
+          cat > Dockerfile.ci << 'DOCKEREOF'
+          FROM node:20-slim AS runner
           WORKDIR /app
+
           ENV NODE_ENV=production
-          
-          RUN groupadd --system --gid 1001 nodejs && \
-              useradd --system --uid 1001 --gid nodejs nextjs
-          
+          ENV PORT=3000
+          ENV HOSTNAME=0.0.0.0
+
+          RUN groupadd --system --gid 1001 nodejs \
+           && useradd --system --uid 1001 --gid nodejs nextjs \
+           && mkdir -p /app/public/uploads
+
           COPY public ./public
           COPY prisma ./prisma
           COPY .next/standalone ./
           COPY .next/static ./.next/static
-          
-          RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app
-          
+
+          RUN chown -R nextjs:nodejs /app
+
           USER nextjs
           EXPOSE 3000
-          ENV PORT=3000
-          ENV HOSTNAME=0.0.0.0
-          
           CMD ["node", "server.js"]
-          EOF
+          DOCKEREOF
 
-          docker build -f Dockerfile.prod -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest . 2>&1 || {
-            echo "BUILD FAILED, running with --progress=plain:"
-            docker build --progress=plain -f Dockerfile.prod -t test . 2>&1
-            exit 1
-          }
+          docker build -f Dockerfile.ci -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
