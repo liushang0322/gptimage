@@ -14,6 +14,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+ARG NEXTAUTH_SECRET=placeholder-build-secret
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+
 # Generate Prisma Client
 RUN npx prisma generate
 
