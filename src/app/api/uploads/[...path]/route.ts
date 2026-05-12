@@ -1,7 +1,4 @@
 import { NextRequest } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { normalizeStoredUploadPath } from "@/lib/upload-urls"
 import { readFile } from "fs/promises"
 import path from "path"
 
@@ -13,34 +10,22 @@ const MIME_TYPES: Record<string, string> = {
   ".gif": "image/gif",
 }
 
-export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
+type RouteContext = {
+  params: Promise<{
+    path: string[]
+  }>
+}
 
-  if (!session?.user) {
-    return Response.json({ error: "未登录" }, { status: 401 })
-  }
-
-  const rawPath = request.nextUrl.searchParams.get("path")
-  if (!rawPath) {
-    return Response.json({ error: "缺少图片路径" }, { status: 400 })
-  }
-
-  const relativePath = normalizeStoredUploadPath(rawPath)
-  const pathParts = relativePath.split("/").filter(Boolean)
+export async function GET(_request: NextRequest, context: RouteContext) {
+  const params = await context.params
+  const pathParts = params.path?.filter(Boolean) || []
 
   if (pathParts.length < 2) {
     return Response.json({ error: "图片路径无效" }, { status: 400 })
   }
 
-  const ownerId = pathParts[0]
-  const user = session.user as { id: string; role?: string }
-
-  if (user.role !== "ADMIN" && ownerId !== user.id) {
-    return Response.json({ error: "无权限访问该图片" }, { status: 403 })
-  }
-
   const uploadsRoot = path.join(process.cwd(), "public", "uploads")
-  const resolvedPath = path.resolve(uploadsRoot, relativePath)
+  const resolvedPath = path.resolve(uploadsRoot, ...pathParts)
 
   if (!resolvedPath.startsWith(uploadsRoot + path.sep)) {
     return Response.json({ error: "图片路径非法" }, { status: 400 })
@@ -54,7 +39,9 @@ export async function GET(request: NextRequest) {
     return new Response(fileBuffer, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "private, max-age=86400",
+        "Content-Length": String(fileBuffer.length),
+        "Content-Disposition": `inline; filename="${path.basename(resolvedPath)}"`,
+        "Cache-Control": "public, max-age=86400, immutable",
       },
     })
   } catch {
