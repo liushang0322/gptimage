@@ -5,12 +5,17 @@ on:
     branches: [master]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -22,7 +27,7 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -31,6 +36,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/liushang0322/gptimage:latest
+          provenance: false
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           build-args: |
             NEXTAUTH_SECRET=placeholder-build-secret
