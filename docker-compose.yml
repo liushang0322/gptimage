@@ -20,7 +20,7 @@ services:
       retries: 5
 
   app:
-    image: liushang0322/gptimage:latest
+    image: ghcr.io/liushang0322/gptimage:latest
     container_name: gptimage-app
     restart: unless-stopped
     networks:
